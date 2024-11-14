@@ -17,6 +17,9 @@ namespace RevitParametersAddin
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            string _token; 
+            string _refreshToken; 
+            DateTime expireTime;
 
             //Get application and document objects  
             UIApplication uiapp = commandData.Application;
@@ -86,9 +89,31 @@ namespace RevitParametersAddin
                 }
 
                 //lets get the token to be able to call the Data Management APIs
-                var token = TokenHandler.Login();
-                string _token = token.ToString();
-                Console.WriteLine("Token generated successfully", _token);
+                //Lets check if we alreday have active token and not expired
+                //You can check if string has value from previous loagin, given that you had not killed that session, or check if token is expired(use dateNo
+
+                if (String.IsNullOrEmpty(_token) || String.IsNullOrEmpty(_refreshToken))
+                {
+                    var response = TokenHandler.Login();
+                    _token = response.access_token.ToString();
+
+                    //refreshToken can be used to exchange the current token for a new token 
+                   _refreshToken = response.refresh_token.ToString();
+
+                    //expire time is used to check if the validity period of token has elapsed
+                    expireTime = response.expires_in;
+
+                    Console.WriteLine("Token generated successfully", _token);
+                }
+                else
+                {
+                    _token = TokenHandler.Refresh3LeggedToken(_refreshToken).ToString();
+
+                }
+
+
+
+
 
                 // The service handling tha DA APIs
                 PublishModel publishModel = new PublishModel();

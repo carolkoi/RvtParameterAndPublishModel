@@ -25,11 +25,13 @@ namespace RevitParametersAddin.TokenHandlers
 
     public class TokenHandler
     {
-        public static string Login()
+        public static TokenModel Login()
         {
             try
             {
                 string token = string.Empty;
+                string refreshToken = string.Empty;
+                var tokenModel = new TokenModel();
                 ForgeConfiguration forgeConfiguration = null;
 
                 // Retrieve the embedded resource stream
@@ -73,20 +75,29 @@ namespace RevitParametersAddin.TokenHandlers
                             TaskDialog.Show("Login Response", "Sorry, Authentication failed! 3legged test");
                             return;
                         }
+                        //var rep = JsonConvert.DeserializeObject<TokenModel>(await bearer.Content.ReadAsStringAsync());
+                        
+                        tokenModel.access_token = bearer.AccessToken;
+                        tokenModel.refresh_token = bearer.RefreshToken;
+                        tokenModel.token_type = bearer.TokenType;
+                        
 
-                        token = bearer.AccessToken;
-                        // The call returned successfully and you got a valid access_token.                
+                        //token = bearer.AccessToken;
+                        //refreshToken = bearer.RefreshToken;
+                        //The call returned successfully and you got a valid access_token.                
                         DateTime dt = DateTime.Now;
                         dt.AddSeconds(double.Parse(bearer.ExpiresIn.ToString()));
+                        tokenModel.expires_in = dt;
+
                         // Ensure authenticationClient is initialized
                         var authenticationClient = new AuthenticationClient();
-                        UserInfo profileApi = await authenticationClient.GetUserInfoAsync(token);
+                        UserInfo profileApi = await authenticationClient.GetUserInfoAsync(bearer.AccessToken);
                         TaskDialog.Show("Login Response", $"Hello {profileApi.Name} !!, You are Logged in!");
                         stopWaitHandle.Set();
                     });
                     stopWaitHandle.WaitOne();
                 }
-                return token;
+                return tokenModel;
             }
             catch (Exception ex)
             {
@@ -96,12 +107,33 @@ namespace RevitParametersAddin.TokenHandlers
             }
         }
 
+        /// <summary>
+        /// Refresh token
+        /// </summary>
+        /// <returns></returns>
+        /// 
+        public static async Task<string> Refresh3LeggedToken(String refreshToken)
+        {
+
+            // This will get the current WORKING directory (i.e. \bin\Debug)
+            string currentUserDirectory = Environment.CurrentDirectory;
+
+            var forgeConfiguration = JsonConvert.DeserializeObject<ForgeConfiguration>(
+                File.ReadAllText(Path.Combine(Directory.GetParent(currentUserDirectory).Parent.FullName, @"appsettings.json")));
+
+            // Ensure authenticationClient is initialized
+            var authenticationClient = new AuthenticationClient();
+            var response = await authenticationClient.RefreshTokenAsync(refreshToken, forgeConfiguration.Forge.ClientId);
+            return response.AccessToken;
+           
+        }
+
 
         public async Task<string> Get2LeggedForgeToken()
         {
             var client = new HttpClient();
             client.BaseAddress = new Uri("https://developer.api.autodesk.com");
-            var request = new HttpRequestMessage(HttpMethod.Post, "/authentication/v1/authenticate");
+            var request = new HttpRequestMessage(HttpMethod.Post, "/authentication/v2/token");
 
             // This will get the current WORKING directory (i.e. \bin\Debug)
             string currentUserDirectory = Environment.CurrentDirectory;

@@ -79,6 +79,7 @@ namespace RevitParametersAddin.TokenHandlers
         {
             _3leggedAsync(cb);
         }
+     
 
         /// <summary>
         /// Gets or sets the InternalToken.
@@ -242,4 +243,5 @@ namespace RevitParametersAddin.TokenHandlers
             }
         }
     }
+    
 }
